@@ -27,6 +27,7 @@ class AC_Trainer(object):
         estimate_advantage_args = {
             'gamma': params['discount'],
             'standardize_advantages': not(params['dont_standardize_advantages']),
+            'differential': params['differential'],
         }
 
         train_args = {
@@ -77,6 +78,7 @@ def main():
     parser.add_argument('--discount', type=float, default=1.0)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
     parser.add_argument('--dont_standardize_advantages', '-dsa', action='store_true')
+    parser.add_argument('--differential', '-diff', action='store_true')
     parser.add_argument('--num_target_updates', '-ntu', type=int, default=10)
     parser.add_argument('--num_grad_steps_per_target_update', '-ngsptu', type=int, default=10)
     parser.add_argument('--n_layers', '-l', type=int, default=2)

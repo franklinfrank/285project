@@ -6,6 +6,7 @@ from collections import OrderedDict
 from .base_agent import BaseAgent
 from cs285.policies.MLP_policy import MLPPolicyAC
 from cs285.critics.bootstrapped_continuous_critic import BootstrappedContinuousCritic
+from cs285.critics.differential_critic import DifferentialCritic 
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 
@@ -19,6 +20,7 @@ class ACAgent(BaseAgent):
 
         self.gamma = self.agent_params['gamma']
         self.standardize_advantages = self.agent_params['standardize_advantages']
+        self.differential = self.agent_params['differential']
 
         self.actor = MLPPolicyAC(sess, 
                                self.agent_params['ac_dim'],
@@ -28,7 +30,11 @@ class ACAgent(BaseAgent):
                                discrete=self.agent_params['discrete'],
                                learning_rate=self.agent_params['learning_rate'],
                                )
-        self.critic = BootstrappedContinuousCritic(sess, self.agent_params)
+        if self.differential:
+            print('Using differential critic')
+            self.critic = DifferentialCritic(sess, self.agent_params)    
+        else:
+            self.critic = BootstrappedContinuousCritic(sess, self.agent_params)
 
         self.replay_buffer = ReplayBuffer()
 
@@ -40,11 +46,16 @@ class ACAgent(BaseAgent):
             # 3) estimate the Q value as Q(s, a) = r(s, a) + gamma*V(s')
             # HINT: Remember to cut off the V(s') term (ie set it to 0) at terminal states (ie terminal_n=1)
             # 4) calculate advantage (adv_n) as A(s, a) = Q(s, a) - V(s)
-        v_s = self.critic.forward(ob_no)
-        v_next = self.critic.forward(next_ob_no)
-        v_next = v_next * (1 - terminal_n)
-        q_est = re_n + self.gamma*v_next
-        adv_n = q_est - v_s
+        if self.differential:
+            v_s = self.critic.forward(next_ob_no, ob_no)
+            v_next = v_s * (1 - terminal_n)
+            adv_n = re_n + v_next
+        else:
+            v_s = self.critic.forward(ob_no)
+            v_next = self.critic.forward(next_ob_no)
+            v_next = v_next * (1 - terminal_n)
+            q_est = re_n + self.gamma*v_next
+            adv_n = q_est - v_s
 
         if self.standardize_advantages:
             adv_n = (adv_n - np.mean(adv_n)) / (np.std(adv_n) + 1e-8)
