@@ -20,6 +20,7 @@ class AC_Trainer(object):
             'n_layers': params['n_layers'],
             'size': params['size'],
             'learning_rate': params['learning_rate'],
+            'critic_learning_rate': params['critic_learning_rate'],
             'num_target_updates': params['num_target_updates'],
             'num_grad_steps_per_target_update': params['num_grad_steps_per_target_update'],
             }
@@ -77,6 +78,7 @@ def main():
 
     parser.add_argument('--discount', type=float, default=1.0)
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)
+    parser.add_argument('--critic_learning_rate', '-clr', type=float, default=5e-3)
     parser.add_argument('--dont_standardize_advantages', '-dsa', action='store_true')
     parser.add_argument('--differential', '-diff', action='store_true')
     parser.add_argument('--num_target_updates', '-ntu', type=int, default=10)

@@ -87,3 +87,4 @@ class ACAgent(BaseAgent):
 
     def sample(self, batch_size):
         return self.replay_buffer.sample_recent_data(batch_size)
+        #return self.replay_buffer.sample_random_data(batch_size)

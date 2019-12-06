@@ -26,7 +26,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         self.critic_loss = tf.losses.mean_squared_error(self.critic_prediction, self.sy_target_n)
 
         # TODO: use the AdamOptimizer to optimize the loss defined above
-        self.critic_update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self.critic_loss)
+        self.critic_update_op = tf.train.AdamOptimizer(self.critic_learning_rate).minimize(self.critic_loss)
     
 
     def define_placeholders(self):
@@ -95,7 +95,12 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             # Ensure that returned arrays are the same length, even if the input
             # had an odd length
             slice_ind = arr.shape[0]//2
-            return arr[:slice_ind], arr[slice_ind: 2*slice_ind]
+            first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
+            first_half_trunc = arr[::10]
+            agg_first_half = np.concatenate((first_half, second_half), axis=0)
+            agg_second_half = np.concatenate((second_half, first_half), axis=0)
+            return agg_first_half, agg_second_half
+            #return first_half, second_half
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
         ob_1, ob_2 = _slice(ob_no)
@@ -106,9 +111,20 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
                 v_next = self.forward(next_ob_1, next_ob_2)
+                if self.gamma != 1:
+                    v_next_ob1 = self.forward(next_ob_1, next_ob_1) / (self.gamma - 1)
+                    v_next_ob2 = self.forward(next_ob_2, next_ob_2) / (self.gamma - 1)
+                else:
+                    v_next_ob1, v_next_ob2 = 0, 0
                 # TODO deal with terminal states in a smarter way
-                v_next = v_next * (1 - terminal_n_1) 
-                target_vals = self.gamma*re_n_1 - re_n_2 + self.gamma*v_next
+                v_next = v_next * (1 - terminal_n_1) * (1-terminal_n_2) 
+                mask1 = -v_next_ob2 * terminal_n_1 
+                mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                
+                v_next += mask1 + mask2 
+                v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
+
+                target_vals = np.clip(self.gamma*re_n_1 - re_n_2 + self.gamma*v_next, -50, 50)
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
             loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_feed, self.sy_target_n: target_vals})
         return loss

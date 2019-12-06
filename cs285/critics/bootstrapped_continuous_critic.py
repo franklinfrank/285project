@@ -11,6 +11,7 @@ class BootstrappedContinuousCritic(BaseCritic):
         self.size = hparams['size']
         self.n_layers = hparams['n_layers']
         self.learning_rate = hparams['learning_rate']
+        self.critic_learning_rate = hparams['critic_learning_rate']
         self.num_target_updates = hparams['num_target_updates']
         self.num_grad_steps_per_target_update = hparams['num_grad_steps_per_target_update']
         self.gamma = hparams['gamma']
