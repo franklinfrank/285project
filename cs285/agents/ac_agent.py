@@ -49,7 +49,7 @@ class ACAgent(BaseAgent):
         if self.differential:
             v_s = self.critic.forward(next_ob_no, ob_no)
             v_next = v_s * (1 - terminal_n)
-            adv_n = re_n + v_next
+            adv_n = re_n + v_s 
         else:
             v_s = self.critic.forward(ob_no)
             v_next = self.critic.forward(next_ob_no)

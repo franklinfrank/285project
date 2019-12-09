@@ -9,9 +9,17 @@ class DifferentialCritic(BootstrappedContinuousCritic):
     
     def _build(self):
 
-        self.sy_ob_no, self.sy_ac_na, self.sy_adv_n = self.define_placeholders()
+        self.diff_sy_ob_no, self.sy_ob_no, self.sy_ac_na, self.sy_adv_n = self.define_placeholders()
 
         # define the critic
+        self.diff_critic_prediction = tf.squeeze(build_mlp(
+            self.diff_sy_ob_no,
+            1,
+            "nn_diff_critic",
+            n_layers=self.n_layers,
+            size=self.size))
+        self.diff_sy_target_n = tf.placeholder(shape=[None], name="diff_critic_target", dtype=tf.float32)
+
         self.critic_prediction = tf.squeeze(build_mlp(
             self.sy_ob_no,
             1,
@@ -20,15 +28,22 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             size=self.size))
         self.sy_target_n = tf.placeholder(shape=[None], name="critic_target", dtype=tf.float32)
 
+
+
         # TODO: set up the critic loss
         # HINT1: the critic_prediction should regress onto the targets placeholder (sy_target_n)
         # HINT2: use tf.losses.mean_squared_error
+        self.diff_critic_loss = tf.losses.mean_squared_error(self.diff_critic_prediction, self.diff_sy_target_n)
+
+        # TODO: use the AdamOptimizer to optimize the loss defined above
+        self.diff_critic_update_op = tf.train.AdamOptimizer(self.critic_learning_rate).minimize(self.diff_critic_loss)
+
         self.critic_loss = tf.losses.mean_squared_error(self.critic_prediction, self.sy_target_n)
 
         # TODO: use the AdamOptimizer to optimize the loss defined above
         self.critic_update_op = tf.train.AdamOptimizer(self.critic_learning_rate).minimize(self.critic_loss)
+ 
     
-
     def define_placeholders(self):
         """
             Placeholders for batch batch observations / actions / advantages in actor critic
@@ -40,18 +55,24 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 sy_ac_na: placeholder for actions
                 sy_adv_n: placeholder for advantages
         """
-        sy_ob_no = tf.placeholder(shape=[None, 2*self.ob_dim], name="ob", dtype=tf.float32)
+        diff_sy_ob_no = tf.placeholder(shape=[None, 2*self.ob_dim], name="ob", dtype=tf.float32)
+        sy_ob_no = tf.placeholder(shape=[None, self.ob_dim], name="ob", dtype=tf.float32)
         if self.discrete:
             sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32)
         else:
             sy_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32)
         sy_adv_n = tf.placeholder(shape=[None], name="adv", dtype=tf.float32)
-        return sy_ob_no, sy_ac_na, sy_adv_n
+        return diff_sy_ob_no, sy_ob_no, sy_ac_na, sy_adv_n
     
     def forward(self, ob_1, ob_2):
             # TODO: run your critic
             # HINT: there's a neural network structure defined above with mlp layers, which serves as your 'critic'
             ob = np.concatenate((ob_1, ob_2), axis=1)
+            return self.sess.run(self.diff_critic_prediction, feed_dict={self.diff_sy_ob_no: ob})
+
+    def single_forward(self, ob):
+            # TODO: run your critic
+            # HINT: there's a neural network structure defined above with mlp layers, which serves as your 'critic'
             return self.sess.run(self.critic_prediction, feed_dict={self.sy_ob_no: ob})
     
 
@@ -97,9 +118,10 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             slice_ind = arr.shape[0]//2
             first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
             first_half_trunc = arr[::10]
-            agg_first_half = np.concatenate((first_half, second_half), axis=0)
-            agg_second_half = np.concatenate((second_half, first_half), axis=0)
-            return agg_first_half, agg_second_half
+            agg_first_half = np.concatenate((second_half, first_half), axis=0)
+            agg_second_half = np.concatenate((first_half, second_half), axis=0)
+            #return agg_first_half, agg_second_half
+            return second_half, first_half
             #return first_half, second_half
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
@@ -107,24 +129,37 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         next_ob_1, next_ob_2 = _slice(next_ob_no)
         terminal_n_1, terminal_n_2 = _slice(terminal_n)
         re_n_1, re_n_2 = _slice(re_n)
-     
+
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
-                v_next = self.forward(next_ob_1, next_ob_2)
+                # Update regular single value function  
+                v_next = self.single_forward(next_ob_no)
+                v_next = v_next * (1 - terminal_n)
+                single_target_vals = re_n + self.gamma*v_next
+
+            loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
+
+        for i in range(total_grad_steps):
+            if i % self.num_grad_steps_per_target_update == 0:
+                diff_v_next = self.forward(next_ob_1, next_ob_2)
                 if self.gamma != 1:
-                    v_next_ob1 = self.forward(next_ob_1, next_ob_1) / (self.gamma - 1)
-                    v_next_ob2 = self.forward(next_ob_2, next_ob_2) / (self.gamma - 1)
-                else:
-                    v_next_ob1, v_next_ob2 = 0, 0
+                    v_next_ob1 = self.single_forward(next_ob_1) 
+                    v_next_ob2 = self.single_forward(next_ob_2)
+                #v_next_ob1 = np.clip(v_next_ob1, -25, 25)
+                #else:
                 # TODO deal with terminal states in a smarter way
-                v_next = v_next * (1 - terminal_n_1) * (1-terminal_n_2) 
+                diff_v_next = diff_v_next * (1 - terminal_n_1) * (1 - terminal_n_2)
                 mask1 = -v_next_ob2 * terminal_n_1 
                 mask2 = self.gamma * v_next_ob1 * terminal_n_2
-                
-                v_next += mask1 + mask2 
-                v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
-
-                target_vals = np.clip(self.gamma*re_n_1 - re_n_2 + self.gamma*v_next, -50, 50)
+                #print(terminal_n_2)    
+                diff_v_next += mask1 + mask2 
+                #print(np.logical_and(terminal_n_1, terminal_n_2))
+                diff_v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
+                #print(np.mean(re_n_1))
+                target_vals = (self.gamma*re_n_1 - re_n_2) + self.gamma*diff_v_next
+                print(target_vals[:10])
+                #print(v_next[:5])
+                # Update regular single value function  
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
-            loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_feed, self.sy_target_n: target_vals})
+            loss, _ = self.sess.run([self.diff_critic_loss, self.diff_critic_update_op], feed_dict = {self.diff_sy_ob_no: ob_feed, self.diff_sy_target_n: target_vals})
         return loss

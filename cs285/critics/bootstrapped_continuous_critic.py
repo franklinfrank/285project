@@ -123,6 +123,7 @@ class BootstrappedContinuousCritic(BaseCritic):
             if i % self.num_grad_steps_per_target_update == 0:
                 v_next = self.forward(next_ob_no)
                 v_next = v_next * (1 - terminal_n)
+                print(v_next[:10])
                 target_vals = re_n + self.gamma*v_next
             loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: target_vals})
         return loss
