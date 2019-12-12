@@ -3,6 +3,7 @@ import numpy as np
 
 from cs285.infrastructure.dqn_utils import MemoryOptimizedReplayBuffer, PiecewiseSchedule
 from cs285.policies.argmax_policy import ArgMaxPolicy
+from cs285.critics.diff_dqn_critic import DiffDQNCritic
 from cs285.critics.dqn_critic import DQNCritic
 
 
@@ -24,7 +25,9 @@ class DQNAgent(object):
         self.exploration = agent_params['exploration_schedule']
         self.optimizer_spec = agent_params['optimizer_spec']
 
-        self.critic = DQNCritic(sess, agent_params, self.optimizer_spec)
+        #self.critic = DQNCritic(sess, agent_params, self.optimizer_spec)
+
+        self.critic = DiffDQNCritic(sess, agent_params, self.optimizer_spec)
         self.actor = ArgMaxPolicy(sess, self.critic)
 
         lander = agent_params['env_name'] == 'LunarLander-v2'
@@ -115,19 +118,51 @@ class DQNAgent(object):
 
             # TODO populate all placeholders necessary for calculating the critic's total_error
             # HINT: obs_t_ph, act_t_ph, rew_t_ph, obs_tp1_ph, done_mask_ph
+
+            def _slice(arr):
+            # Ensure that returned arrays are the same length, even if the input
+            # had an odd length
+                slice_ind = arr.shape[0]//2
+                first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
+                first_half_trunc = arr[::10]
+                agg_first_half = np.concatenate((second_half, first_half), axis=0)
+                agg_second_half = np.concatenate((first_half, second_half), axis=0)
+                #return agg_first_half, agg_second_half
+                return first_half, second_half
+                #return first_half, second_half
+
+            ob_no_1, ob_no_2 = _slice(ob_no) 
+            re_n_1, re_n_2 = _slice(re_n) 
+            next_ob_no_1, next_ob_no_2 = _slice(next_ob_no)
+            terminal_n_1, terminal_n_2 = _slice(terminal_n)
+
             feed_dict = {
                 self.critic.learning_rate: self.optimizer_spec.lr_schedule.value(self.t),
-                self.critic.obs_t_ph: ob_no,
+                self.critic.obs_t_ph_1: ob_no_1,
+                self.critic.obs_t_ph_2: ob_no_2,
                 self.critic.act_t_ph: ac_na,
-                self.critic.rew_t_ph: re_n,
-                self.critic.obs_tp1_ph: next_ob_no,
-                self.critic.done_mask_ph: terminal_n,
+                self.critic.rew_t_ph_1: re_n_1,
+                self.critic.rew_t_ph_2: re_n_2,
+                self.critic.obs_tp1_ph_1: next_ob_no_1,
+                self.critic.obs_tp1_ph_2: next_ob_no_2,
+                self.critic.done_mask_ph_1: terminal_n_1,
+                self.critic.done_mask_ph_2: terminal_n_2,
             }
 
             # TODO: create a LIST of tensors to run in order to 
             # train the critic as well as get the resulting total_error
+            train_rew_tensors = [self.critic.rew_error, self.critic.rew_train_op]
+            rew_loss, _ = self.sess.run(train_rew_tensors, feed_dict=feed_dict)
+            #print('Reward loss: {}'.format(rew_loss))
+
+            train_dyn_tensors = [self.critic.dyn_error, self.critic.dyn_train_op]
+            dyn_loss, _ = self.sess.run(train_dyn_tensors, feed_dict=feed_dict)
+            #print('Dynamics loss: {}'.format(dyn_loss))
+
             tensors_to_run = [self.critic.total_error, self.critic.train_fn]
-            loss, _ = self.sess.run(tensors_to_run, feed_dict=feed_dict)
+            val_loss, _ = self.sess.run(tensors_to_run, feed_dict=feed_dict)
+
+            #print('Value fn loss: {}'.format(val_loss))
             #print("Loss is {}".format(loss))
             # Note: remember that the critic's total_error value is what you
             # created to compute the Bellman error in a batch, 

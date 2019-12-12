@@ -20,6 +20,7 @@ def get_env_kwargs(env_name):
             'replay_buffer_size': int(1e4),
             'num_timesteps': int(1e7),
             'q_func': atari_model,
+            'value_func': atari_value_model,
             'learning_freq': 4,
             'grad_norm_clipping': 10,
             'input_shape': (84, 84, 4),
@@ -36,9 +37,12 @@ def get_env_kwargs(env_name):
         kwargs = {
             'optimizer_spec': lander_optimizer(),
             'q_func': lander_model,
+            'value_func': lander_value_model,
+            'rew_func': lander_rew_model,
             'replay_buffer_size': 50000,
             'batch_size': 32,
             'gamma': 1.00,
+            'n_act_dim': 6,
             'learning_starts': 20000,
             'learning_freq': 1,
             'frame_history_len': 1,
@@ -66,6 +70,27 @@ def lander_model(obs, num_actions, scope, reuse=False):
 
         return out
 
+def lander_value_model(obs, num_actions, scope, reuse=False):
+    with tf.variable_scope(scope, reuse=reuse):
+        out = obs
+        with tf.variable_scope("state_value"):
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=1, activation_fn=None)
+
+        return out
+
+def lander_rew_model(obs, num_actions, scope, reuse=False):
+    with tf.variable_scope(scope, reuse=reuse):
+        out = obs
+        with tf.variable_scope("state_value"):
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=64, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=1, activation_fn=None)
+        return out
+
 
 def atari_model(img_input, num_actions, scope, reuse=False):
     with tf.variable_scope(scope, reuse=reuse):
@@ -81,6 +106,22 @@ def atari_model(img_input, num_actions, scope, reuse=False):
             out = layers.fully_connected(out, num_outputs=num_actions, activation_fn=None)
 
         return out
+
+def atari_value_model(img_input, num_actions, scope, reuse=False):
+    with tf.variable_scope(scope, reuse=reuse):
+        out = tf.cast(img_input, tf.float32) / 255.0
+        with tf.variable_scope("convnet"):
+            # original architecture
+            out = layers.convolution2d(out, num_outputs=32, kernel_size=8, stride=4, activation_fn=tf.nn.relu)
+            out = layers.convolution2d(out, num_outputs=64, kernel_size=4, stride=2, activation_fn=tf.nn.relu)
+            out = layers.convolution2d(out, num_outputs=64, kernel_size=3, stride=1, activation_fn=tf.nn.relu)
+        out = layers.flatten(out)
+        with tf.variable_scope("state_value"):
+            out = layers.fully_connected(out, num_outputs=512, activation_fn=tf.nn.relu)
+            out = layers.fully_connected(out, num_outputs=1, activation_fn=None)
+
+        return out
+
 
 def atari_exploration_schedule(num_timesteps):
     return PiecewiseSchedule(
