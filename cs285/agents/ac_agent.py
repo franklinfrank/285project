@@ -50,6 +50,11 @@ class ACAgent(BaseAgent):
             v_s = self.critic.forward(next_ob_no, ob_no)
             v_next = v_s * (1 - terminal_n)
             adv_n = re_n + v_s 
+            single_v_s1 = self.critic.single_forward(ob_no)
+            single_v_s2 = self.critic.single_forward(next_ob_no)
+            single_adv_n = re_n + self.gamma*single_v_s2*(1-terminal_n) - single_v_s1
+            
+            
         else:
             v_s = self.critic.forward(ob_no)
             v_next = self.critic.forward(next_ob_no)
@@ -59,6 +64,9 @@ class ACAgent(BaseAgent):
 
         if self.standardize_advantages:
             adv_n = (adv_n - np.mean(adv_n)) / (np.std(adv_n) + 1e-8)
+            single_adv_n = (single_adv_n - np.mean(single_adv_n)) / (np.std(single_adv_n) + 1e-8)
+        print("Differential Advantage:", adv_n[:10])
+        print("Regular Advantage:", single_adv_n[:10])
         return adv_n
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):

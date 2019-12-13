@@ -136,6 +136,10 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             #return rand_second, rand_first
             #return second_half, first_half
             #return first_half, second_half
+            slice_length = arr.shape[0] - 1
+            first_half = arr[:slice_length]
+            second_half = arr[1:slice_length + 1]
+            return second_half, first_half
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
         ob_1, ob_2 = _slice(ob_no)
@@ -150,7 +154,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 v_next = v_next * (1 - terminal_n)
                 single_target_vals = re_n + self.gamma*v_next
 
-            loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
+            single_loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
 
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
@@ -178,4 +182,4 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 # Update regular single value function  
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
             loss, _ = self.sess.run([self.diff_critic_loss, self.diff_critic_update_op], feed_dict = {self.diff_sy_ob_no: ob_feed, self.diff_sy_target_n: target_vals})
-        return loss
+        return single_loss
