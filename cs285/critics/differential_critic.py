@@ -115,14 +115,18 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         def _slice(arr):
             # Ensure that returned arrays are the same length, even if the input
             # had an odd length
-            slice_ind = arr.shape[0]//2
-            first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
-            first_half_trunc = arr[::10]
-            agg_first_half = np.concatenate((second_half, first_half), axis=0)
-            agg_second_half = np.concatenate((first_half, second_half), axis=0)
+            #slice_ind = arr.shape[0]//2
+            #first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
+            #first_half_trunc = arr[::10]
+            #agg_first_half = np.concatenate((second_half, first_half), axis=0)
+            #agg_second_half = np.concatenate((first_half, second_half), axis=0)
             #return agg_first_half, agg_second_half
-            return second_half, first_half
+            #return second_half, first_half
             #return first_half, second_half
+            slice_length = arr.shape[0] - 1
+            first_half = arr[:slice_length]
+            second_half = arr[1:slice_length + 1]
+            return second_half, first_half
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
         ob_1, ob_2 = _slice(ob_no)
@@ -137,7 +141,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 v_next = v_next * (1 - terminal_n)
                 single_target_vals = re_n + self.gamma*v_next
 
-            loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
+            single_loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
 
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
@@ -149,17 +153,20 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 #else:
                 # TODO deal with terminal states in a smarter way
                 diff_v_next = diff_v_next * (1 - terminal_n_1) * (1 - terminal_n_2)
-                mask1 = -v_next_ob2 * terminal_n_1 
-                mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                # mask1 = -v_next_ob2 * terminal_n_1 
+                # mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                mask1 = -2 * terminal_n_1
+                mask2 = 2 * terminal_n_2
                 #print(terminal_n_2)    
                 diff_v_next += mask1 + mask2 
                 #print(np.logical_and(terminal_n_1, terminal_n_2))
                 diff_v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
                 #print(np.mean(re_n_1))
                 target_vals = (self.gamma*re_n_1 - re_n_2) + self.gamma*diff_v_next
-                print(target_vals[:10])
+                #target_vals = re_n_2 + self.gamma*diff_v_next
+                #print(target_vals[:10])
                 #print(v_next[:5])
                 # Update regular single value function  
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
             loss, _ = self.sess.run([self.diff_critic_loss, self.diff_critic_update_op], feed_dict = {self.diff_sy_ob_no: ob_feed, self.diff_sy_target_n: target_vals})
-        return loss
+        return single_loss
