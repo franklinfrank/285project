@@ -154,6 +154,7 @@ class RL_Trainer(object):
             if self.logvideo or self.logmetrics:
                 # perform logging
                 print('\nBeginning logging procedure...')
+                print('-----------------ITER {} --------'.format(itr))
                 if isinstance(self.agent, DQNAgent):
                     self.perform_dqn_logging()
                 else:

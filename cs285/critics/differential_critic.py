@@ -10,14 +10,19 @@ class DifferentialCritic(BootstrappedContinuousCritic):
     def _build(self):
 
         self.diff_sy_ob_no, self.sy_ob_no, self.sy_ac_na, self.sy_adv_n = self.define_placeholders()
+        self.n_diff_layers = self.n_layers
+        self.diff_size = self.size
+        self.n_diff_layers = 4 
+        self.diff_size = 128
 
         # define the critic
         self.diff_critic_prediction = tf.squeeze(build_mlp(
             self.diff_sy_ob_no,
             1,
             "nn_diff_critic",
-            n_layers=self.n_layers,
-            size=self.size))
+            n_layers=self.n_diff_layers,
+            size=self.diff_size,
+            activation=tf.nn.relu))
         self.diff_sy_target_n = tf.placeholder(shape=[None], name="diff_critic_target", dtype=tf.float32)
 
         self.critic_prediction = tf.squeeze(build_mlp(
@@ -27,7 +32,6 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             n_layers=self.n_layers,
             size=self.size))
         self.sy_target_n = tf.placeholder(shape=[None], name="critic_target", dtype=tf.float32)
-
 
 
         # TODO: set up the critic loss
@@ -111,17 +115,26 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 # HINT2: need to populate the following (in the feed_dict): 
                     #a) sy_ob_no with ob_no
                     #b) sy_target_n with target values calculated above
-                    
+        
+        rand_first_inds = np.random.choice(ob_no.shape[0], size=2000)
+        rand_second_inds = np.random.choice(ob_no.shape[0], size=2000)
+            
         def _slice(arr):
             # Ensure that returned arrays are the same length, even if the input
             # had an odd length
             slice_ind = arr.shape[0]//2
-            first_half, second_half = arr[:2*slice_ind:2], arr[1:2*slice_ind:2]
+            first_half, second_half = arr[:-1], arr[1:]
             first_half_trunc = arr[::10]
-            agg_first_half = np.concatenate((second_half, first_half), axis=0)
-            agg_second_half = np.concatenate((first_half, second_half), axis=0)
-            #return agg_first_half, agg_second_half
-            return second_half, first_half
+            rand_t_inds = np.minimum(rand_first_inds, rand_second_inds)
+            rand_tp1_inds= np.maximum(rand_second_inds, rand_first_inds)
+            rand_first = arr[rand_t_inds]
+            rand_second = arr[rand_tp1_inds]
+            
+            agg_first_half = np.concatenate((rand_second, second_half), axis=0)
+            agg_second_half = np.concatenate((rand_first, first_half), axis=0)
+            return agg_first_half, agg_second_half
+            #return rand_second, rand_first
+            #return second_half, first_half
             #return first_half, second_half
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
@@ -149,15 +162,18 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 #else:
                 # TODO deal with terminal states in a smarter way
                 diff_v_next = diff_v_next * (1 - terminal_n_1) * (1 - terminal_n_2)
-                mask1 = -v_next_ob2 * terminal_n_1 
-                mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                #mask1 = -v_next_ob2 * terminal_n_1 
+                mask1 = -2*terminal_n_1 
+                #mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                mask2 = self.gamma * 2 * terminal_n_2
                 #print(terminal_n_2)    
                 diff_v_next += mask1 + mask2 
                 #print(np.logical_and(terminal_n_1, terminal_n_2))
                 diff_v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
-                #print(np.mean(re_n_1))
+                #print(np.mean(re_n_1))v_next_ob1 
+
                 target_vals = (self.gamma*re_n_1 - re_n_2) + self.gamma*diff_v_next
-                print(target_vals[:10])
+                #print(target_vals[:10])
                 #print(v_next[:5])
                 # Update regular single value function  
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
