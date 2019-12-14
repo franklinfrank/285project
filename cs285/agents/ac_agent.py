@@ -53,8 +53,6 @@ class ACAgent(BaseAgent):
             single_v_s1 = self.critic.single_forward(ob_no)
             single_v_s2 = self.critic.single_forward(next_ob_no)
             single_adv_n = re_n + self.gamma*single_v_s2*(1-terminal_n) - single_v_s1
-            
-            
         else:
             v_s = self.critic.forward(ob_no)
             v_next = self.critic.forward(next_ob_no)

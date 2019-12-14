@@ -132,14 +132,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             
             agg_first_half = np.concatenate((rand_second, second_half), axis=0)
             agg_second_half = np.concatenate((rand_first, first_half), axis=0)
-            return agg_first_half, agg_second_half
-            #return rand_second, rand_first
-            #return second_half, first_half
-            #return first_half, second_half
-            slice_length = arr.shape[0] - 1
-            first_half = arr[:slice_length]
-            second_half = arr[1:slice_length + 1]
-            return second_half, first_half
+            return rand_second, rand_first
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
         ob_1, ob_2 = _slice(ob_no)
