@@ -115,9 +115,9 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 # HINT2: need to populate the following (in the feed_dict): 
                     #a) sy_ob_no with ob_no
                     #b) sy_target_n with target values calculated above
-        
-        rand_first_inds = np.random.choice(ob_no.shape[0], size=2000)
-        rand_second_inds = np.random.choice(ob_no.shape[0], size=2000)
+        rand_samp = ob_no.shape[0]
+        rand_first_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
+        rand_second_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
             
         def _slice(arr):
             # Ensure that returned arrays are the same length, even if the input
@@ -152,9 +152,9 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
                 diff_v_next = self.forward(next_ob_1, next_ob_2)
-                if self.gamma != 1:
-                    v_next_ob1 = self.single_forward(next_ob_1) 
-                    v_next_ob2 = self.single_forward(next_ob_2)
+
+                v_next_ob1 = self.single_forward(next_ob_1) 
+                v_next_ob2 = self.single_forward(next_ob_2)
                 #v_next_ob1 = np.clip(v_next_ob1, -25, 25)
                 #else:
                 # TODO deal with terminal states in a smarter way
@@ -175,4 +175,4 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 # Update regular single value function  
             ob_feed = np.concatenate((ob_1, ob_2), axis=1)
             loss, _ = self.sess.run([self.diff_critic_loss, self.diff_critic_update_op], feed_dict = {self.diff_sy_ob_no: ob_feed, self.diff_sy_target_n: target_vals})
-        return single_loss
+        return loss
