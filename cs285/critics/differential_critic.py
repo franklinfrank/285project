@@ -6,6 +6,8 @@ import numpy as np
 class DifferentialCritic(BootstrappedContinuousCritic):
     def __init__(self, sess, hparams):
         super().__init__(sess, hparams)
+        self.terminal_val = hparams['terminal_val']
+        self.sample_strat = hparams['sample_strategy']
     
     def _build(self):
 
@@ -25,14 +27,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             activation=tf.nn.relu))
         self.diff_sy_target_n = tf.placeholder(shape=[None], name="diff_critic_target", dtype=tf.float32)
 
-        self.critic_prediction = tf.squeeze(build_mlp(
-            self.sy_ob_no,
-            1,
-            "nn_critic",
-            n_layers=self.n_layers,
-            size=self.size))
-        self.sy_target_n = tf.placeholder(shape=[None], name="critic_target", dtype=tf.float32)
-
+       
 
         # TODO: set up the critic loss
         # HINT1: the critic_prediction should regress onto the targets placeholder (sy_target_n)
@@ -41,6 +36,14 @@ class DifferentialCritic(BootstrappedContinuousCritic):
 
         # TODO: use the AdamOptimizer to optimize the loss defined above
         self.diff_critic_update_op = tf.train.AdamOptimizer(self.critic_learning_rate).minimize(self.diff_critic_loss)
+
+        self.critic_prediction = tf.squeeze(build_mlp(
+            self.sy_ob_no,
+            1,
+            "nn_critic",
+            n_layers=self.n_layers,
+            size=self.size))
+        self.sy_target_n = tf.placeholder(shape=[None], name="critic_target", dtype=tf.float32)
 
         self.critic_loss = tf.losses.mean_squared_error(self.critic_prediction, self.sy_target_n)
 
@@ -67,7 +70,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
             sy_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32)
         sy_adv_n = tf.placeholder(shape=[None], name="adv", dtype=tf.float32)
         return diff_sy_ob_no, sy_ob_no, sy_ac_na, sy_adv_n
-    
+
     def forward(self, ob_1, ob_2):
             # TODO: run your critic
             # HINT: there's a neural network structure defined above with mlp layers, which serves as your 'critic'
@@ -115,24 +118,51 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                 # HINT2: need to populate the following (in the feed_dict): 
                     #a) sy_ob_no with ob_no
                     #b) sy_target_n with target values calculated above
-        rand_samp = ob_no.shape[0]
-        rand_first_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
-        rand_second_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
+        if self.sample_strat == "mixed":
+            rand_samp = ob_no.shape[0]//2
+        else:
+            rand_samp = ob_no.shape[0]
+        if self.sample_strat == "constrained_random":
+            rand_first_inds = np.random.choice(ob_no.shape[0]-10, size=rand_samp)
+            rand_second_inds = rand_first_inds + np.random.choice(10, rand_samp) + 1
+        else:
+            rand_first_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
+            rand_second_inds = np.random.choice(ob_no.shape[0], size=rand_samp)
+        
             
         def _slice(arr):
             # Ensure that returned arrays are the same length, even if the input
             # had an odd length
-            slice_ind = arr.shape[0]//2
-            first_half, second_half = arr[:-1], arr[1:]
-            first_half_trunc = arr[::10]
-            rand_t_inds = np.minimum(rand_first_inds, rand_second_inds)
-            rand_tp1_inds= np.maximum(rand_second_inds, rand_first_inds)
-            rand_first = arr[rand_t_inds]
-            rand_second = arr[rand_tp1_inds]
             
-            agg_first_half = np.concatenate((rand_second, second_half), axis=0)
-            agg_second_half = np.concatenate((rand_first, first_half), axis=0)
-            return rand_second, rand_first
+            if self.sample_strat == "sequential":
+                first_half, second_half = arr[:-1], arr[1:]
+                return second_half, first_half
+            if self.sample_strat == "ordered_random":
+                rand_t_inds = np.minimum(rand_first_inds, rand_second_inds)
+                rand_tp1_inds= np.maximum(rand_second_inds, rand_first_inds)
+                rand_first = arr[rand_t_inds]
+                rand_second = arr[rand_tp1_inds]
+                return rand_second, rand_first
+            elif self.sample_strat == "constrained_random":
+                rand_first = arr[rand_first_inds]
+                rand_second = arr[rand_second_inds]
+                return rand_second, rand_first
+            elif self.sample_strat == "pure_random":
+                rand_first = arr[rand_first_inds]
+                rand_second = arr[rand_second_inds]
+                return rand_first, rand_second
+            elif self.sample_strat == "mixed":
+                half_point = arr.shape[0]//2
+                first_half = arr[half_point:-1]
+                second_half = arr[half_point+1:]
+                rand_t_inds = np.minimum(rand_first_inds, rand_second_inds)
+                rand_tp1_inds= np.maximum(rand_second_inds, rand_first_inds)
+                rand_first = arr[rand_first_inds]
+                rand_second = arr[rand_second_inds]
+                agg_first_half = np.concatenate((rand_second, second_half), axis=0)
+                agg_second_half = np.concatenate((rand_first, first_half), axis=0)
+                return rand_second, rand_first
+
 
         total_grad_steps = self.num_grad_steps_per_target_update * self.num_target_updates
         ob_1, ob_2 = _slice(ob_no)
@@ -140,30 +170,32 @@ class DifferentialCritic(BootstrappedContinuousCritic):
         terminal_n_1, terminal_n_2 = _slice(terminal_n)
         re_n_1, re_n_2 = _slice(re_n)
 
-        for i in range(total_grad_steps):
-            if i % self.num_grad_steps_per_target_update == 0:
-                # Update regular single value function  
-                v_next = self.single_forward(next_ob_no)
-                v_next = v_next * (1 - terminal_n)
-                single_target_vals = re_n + self.gamma*v_next
+        if self.terminal_val == "learn":
+            for i in range(total_grad_steps):
+                if i % self.num_grad_steps_per_target_update == 0:
+                    # Update regular single value function  
+                    v_next = self.single_forward(next_ob_no)
+                    v_next = v_next * (1 - terminal_n)
+                    single_target_vals = re_n + self.gamma*v_next
 
-            single_loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
+                single_loss, _ = self.sess.run([self.critic_loss, self.critic_update_op], feed_dict = {self.sy_ob_no: ob_no, self.sy_target_n: single_target_vals})
 
         for i in range(total_grad_steps):
             if i % self.num_grad_steps_per_target_update == 0:
                 diff_v_next = self.forward(next_ob_1, next_ob_2)
-
-                v_next_ob1 = self.single_forward(next_ob_1) 
-                v_next_ob2 = self.single_forward(next_ob_2)
+                if self.terminal_val == "learn":
+                    v_next_ob1 = self.single_forward(next_ob_1) 
+                    v_next_ob2 = self.single_forward(next_ob_2)
                 #v_next_ob1 = np.clip(v_next_ob1, -25, 25)
                 #else:
                 # TODO deal with terminal states in a smarter way
                 diff_v_next = diff_v_next * (1 - terminal_n_1) * (1 - terminal_n_2)
-                #mask1 = -v_next_ob2 * terminal_n_1 
-                mask1 = -2*terminal_n_1 
-                #mask2 = self.gamma * v_next_ob1 * terminal_n_2
-                mask2 = self.gamma * 2 * terminal_n_2
-                #print(terminal_n_2)    
+                if self.terminal_val == "learn":
+                    mask1 = -v_next_ob2 * terminal_n_1 
+                    mask2 = self.gamma * v_next_ob1 * terminal_n_2
+                else:
+                    mask1 = -int(self.terminal_val) * terminal_n_1 
+                    mask2 = self.gamma * int(self.terminal_val) * terminal_n_2
                 diff_v_next += mask1 + mask2 
                 #print(np.logical_and(terminal_n_1, terminal_n_2))
                 diff_v_next *= np.logical_not(np.logical_and(terminal_n_1, terminal_n_2))
