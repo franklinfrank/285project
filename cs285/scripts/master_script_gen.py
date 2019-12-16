@@ -46,7 +46,7 @@ with open(env_sweep_set, 'w+') as f:
                                        sample_strategy=[DEFAULT_STRAT], 
                                        terminal_val=[DEFAULT_TERM], 
                                        batch_size=[DEFAULT_BATCH_SIZE])):
-        name = '_'.join([f'{k}:{v}' for k, v in exp_flags.items()])
+        name = '_'.join([f'{k}={v}' for k, v in exp_flags.items()])
         exp_flags['name'] = name
         exp_cmd = py_cmd.format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
