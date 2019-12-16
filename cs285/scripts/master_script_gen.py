@@ -36,7 +36,7 @@ template_cmds = {
     'HalfCheetah-v2': \
         "python run_hw3_actor_critic.py --env_name HalfCheetah-v2 -gpu "\
         "--ep_len 150 --discount 0.90 --scalar_log_freq 1 -n 150 -l 2 -s 32 "\
-        "-b 30000 -tb 4000 -eb 1500 -lr 0.02 --exp_name {name} -ntu 10 "\
+        "-b 30000 -eb 1500 -lr 0.02 --exp_name {name} -ntu 10 "\
         "-ngsptu 10 -diff --seed {seed} --num_critic_updates_per_agent_update 10 "\
         "--sample_strategy {sample_strategy} --terminal_val {terminal_val} "\
         "-tb {batch_size} ",
