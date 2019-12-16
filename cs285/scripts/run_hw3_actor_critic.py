@@ -35,6 +35,8 @@ class AC_Trainer(object):
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'num_critic_updates_per_agent_update': params['num_critic_updates_per_agent_update'],
             'num_actor_updates_per_agent_update': params['num_actor_updates_per_agent_update'],
+            'terminal_val': params['terminal_val'],
+            'sample_strategy': params['sample_strategy'],
         }
 
         agent_params = {**computation_graph_args, **estimate_advantage_args, **train_args}
@@ -82,7 +84,7 @@ def main():
     parser.add_argument('--dont_standardize_advantages', '-dsa', action='store_true')
     parser.add_argument('--differential', '-diff', action='store_true')
     parser.add_argument('--num_target_updates', '-ntu', type=int, default=10)
-    parser.add_argument('--num_grad_steps_per_target_updaagent_classte', '-ngsptu', type=int, default=10)
+    parser.add_argument('--num_grad_steps_per_target_update', '-ngsptu', type=int, default=10)
     parser.add_argument('--n_layers', '-l', type=int, default=2)
     parser.add_argument('--size', '-s', type=int, default=64)
     parser.add_argument('--sample_strategy', '-sstrat', type=str, default='ordered_random', choices=['ordered_random', 'pure_random', 'sequential', 'constrained_random', 'mixed'])
