@@ -194,7 +194,7 @@ class DifferentialCritic(BootstrappedContinuousCritic):
                     mask1 = -v_next_ob2 * terminal_n_1 
                     mask2 = self.gamma * v_next_ob1 * terminal_n_2
                 else:
-                    mask1 = int(self.terminal_val) * terminal_n_1 
+                    mask1 = -int(self.terminal_val) * terminal_n_1 
                     mask2 = self.gamma * int(self.terminal_val) * terminal_n_2
                 diff_v_next += mask1 + mask2 
                 #print(np.logical_and(terminal_n_1, terminal_n_2))
