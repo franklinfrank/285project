@@ -2,7 +2,7 @@ import itertools
 
 from typing import List, Dict
 
-seeds = [285, 2020, 2]
+seeds = [285, 2020, 2, 423, 389, 147]
 environments = ["HalfCheetah-v2", "CartPole-v0", "InvertedPendulum-v2"]
 strategies = [
     "ordered_random",
