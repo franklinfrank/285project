@@ -51,6 +51,8 @@ def dict_product(dicts, *, master_key="env_name") -> List[Dict]:
                 dct[k] = DEFAULTS[dct[master_key]][k]
     return ret
 
+def get_bl_name(exp_flags: Dict) -> str:
+    return "bl" + "_".join([f"{k}={v}" for k, v in exp_flags.items()])
 
 def get_exp_name(exp_flags: Dict) -> str:
     return "_".join([f"{k}={v}" for k, v in exp_flags.items()])
