@@ -1,4 +1,7 @@
 import itertools
+from typing import Dict 
+
+import utils
 
 seeds = [285, 2020, 2]
 
@@ -60,7 +63,7 @@ with open(env_sweep_set, 'w+') as f:
                                        sample_strategy=[DEFAULT_STRAT], 
                                        terminal_val=[DEFAULT_TERM], 
                                        batch_size=[DEFAULT_BATCH_SIZE])):
-        name = '_'.join([f'{k}={v}' for k, v in exp_flags.items()])
+        name = utils.get_exp_name(exp_flags)
         exp_flags['name'] = name
         exp_cmd = template_cmds[exp_flags['env_name']].format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
@@ -74,7 +77,7 @@ with open(sample_sweep_set, 'w+') as f:
                                        sample_strategy=strategies, 
                                        terminal_val=[DEFAULT_TERM], 
                                        batch_size=[DEFAULT_BATCH_SIZE])):
-        name = '_'.join([f'{k}={v}' for k, v in exp_flags.items()])
+        name = utils.get_exp_name(exp_flags)
         exp_flags['name'] = name
         exp_cmd = template_cmds[exp_flags['env_name']].format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
@@ -88,7 +91,7 @@ with open(terminal_val_sweep_set, 'w+') as f:
                                        sample_strategy=[DEFAULT_STRAT], 
                                        terminal_val=terminal_values, 
                                        batch_size=[DEFAULT_BATCH_SIZE])):
-        name = '_'.join([f'{k}={v}' for k, v in exp_flags.items()])
+        name = utils.get_exp_name(exp_flags)
         exp_flags['name'] = name
         exp_cmd = template_cmds[exp_flags['env_name']].format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
@@ -102,7 +105,7 @@ with open(batch_size_sweep_set, 'w+') as f:
                                        sample_strategy=[DEFAULT_STRAT], 
                                        terminal_val=[DEFAULT_TERM], 
                                        batch_size=batch_sizes)):
-        name = '_'.join([f'{k}={v}' for k, v in exp_flags.items()])
+        name = utils.get_exp_name(exp_flags)
         exp_flags['name'] = name
         exp_cmd = template_cmds[exp_flags['env_name']].format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
