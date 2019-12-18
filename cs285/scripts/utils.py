@@ -104,6 +104,18 @@ def _get_sample_sweep_flags() -> List[Dict]:
     )
 
 
+def _get_sample_and_term_sweep_flags() -> List[Dict]:
+    return dict_product(
+        dict(
+            seed=seeds,
+            env_name=[DEFAULT_ENV],
+            sample_strategy=strategies,
+            terminal_val=terminal_values,
+            batch_size=[None],
+        )
+    )
+
+
 def get_exp_flags(exp_set: str) -> List[Dict]:
     if exp_set == "env_sweep":
         return _get_env_sweep_flags()
@@ -113,5 +125,7 @@ def get_exp_flags(exp_set: str) -> List[Dict]:
         return _get_terminal_val_sweep_flags()
     elif exp_set == "batch_size_sweep":
         return _get_batch_size_sweep()
+    elif exp_set == "sample_and_term_sweep":
+        return _get_sample_and_term_sweep_flags()
     else:
         raise ValueError("Experiment set unrecognized!")

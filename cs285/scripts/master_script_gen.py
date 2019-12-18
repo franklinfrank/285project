@@ -68,3 +68,13 @@ with open(batch_size_sweep_set, "w+") as f:
         exp_cmd = template_cmds[exp_flags["env_name"]].format_map(exp_flags)
         exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
         f.write(exp_cmd)
+
+# Search over sample strategies and terminal values sizes
+sample_and_term_sweep = "run_sample_and_term_sweep.sh"
+with open(sample_and_term_sweep, "w+") as f:
+    for exp_flags in utils.get_exp_flags("sample_and_term_sweep"):
+        name = utils.get_exp_name(exp_flags)
+        exp_flags["name"] = name
+        exp_cmd = template_cmds[exp_flags["env_name"]].format_map(exp_flags)
+        exp_cmd = tmux_cmd.format(**(dict(name=name, py_cmd=exp_cmd)))
+        f.write(exp_cmd)
