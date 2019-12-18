@@ -84,7 +84,7 @@ def _get_terminal_val_sweep_flags() -> List[Dict]:
     return dict_product(
         dict(
             seed=seeds,
-            env_name=[DEFAULT_ENV],
+            env_name=environments,
             sample_strategy=[None],
             terminal_val=terminal_values,
             batch_size=[None],
@@ -96,7 +96,7 @@ def _get_sample_sweep_flags() -> List[Dict]:
     return dict_product(
         dict(
             seed=seeds,
-            env_name=[DEFAULT_ENV],
+            env_name=environments,
             sample_strategy=strategies,
             terminal_val=[None],
             batch_size=[None],
