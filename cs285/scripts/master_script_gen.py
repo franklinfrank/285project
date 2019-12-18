@@ -3,37 +3,6 @@ from typing import Dict
 
 import utils
 
-seeds = [285, 2020, 2]
-
-# Default arg first
-environments = ["HalfCheetah-v2", "CartPole-v0", "InvertedPendulum-v2"]
-strategies = [
-    "ordered_random",
-    "pure_random",
-    "sequential",
-    "constrained_random",
-    "mixed",
-]
-terminal_values = ["learn", 0, 2, 5, 10, 50]
-batch_sizes = [1000, 2000, 3000, 4000]
-
-DEFAULT_ENV = environments[0]
-DEFAULT_STRAT = strategies[0]
-DEFAULT_TERM = terminal_values[2]
-DEFAULT_BATCH_SIZE = batch_sizes[3]
-
-
-def dict_product(dicts):
-    """
-    >>> list(dict_product(dict(number=[1,2], character='ab')))
-    [{'character': 'a', 'number': 1},
-     {'character': 'a', 'number': 2},
-     {'character': 'b', 'number': 1},
-     {'character': 'b', 'number': 2}]
-    """
-    return (dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
-
-
 tmux_cmd = "tmux \
     new-session -s {name} '{py_cmd}'  \; \
     detach-client \n"
