@@ -5,13 +5,13 @@ import utils
 
 tmux_cmd = "tmux \
     new-session -s {name} '{py_cmd}'  \; \
-    detach-client \n"
+    detach-client\n"
 
 template_cmds = {
     "InvertedPendulum-v2": "python run_hw3_actor_critic.py --env_name InvertedPendulum-v2 -n 100 -b "
     "1000 --exp_name {name} -ntu 10 -ngsptu 10 -gpu -clr 5e-3 --seed {seed} "
-    "--discount 0.95 -diff --sample_strategy sequential " # Hardcoded
-    "--terminal_val 5 -tb 1000", # Harcoded
+    "--discount 0.95 -diff --sample_strategy {sample_strategy} "
+    "--terminal_val {terminal_val} -tb {batch_size}",
     "HalfCheetah-v2": "python run_hw3_actor_critic.py --env_name HalfCheetah-v2 -gpu "
     "--ep_len 150 --discount 0.90 --scalar_log_freq 1 -n 150 -l 2 -s 32 "
     "-b 30000 -eb 1500 -lr 0.02 --exp_name {name} -ntu 10 "
@@ -20,8 +20,8 @@ template_cmds = {
     "-tb {batch_size} ",
     "CartPole-v0": "python run_hw3_actor_critic.py --env_name CartPole-v0 -n 100 -b 1000 "
     "--seed {seed} --exp_name {name} -ntu 10 -ngsptu 10 -diff -gpu "
-    "--sample_strategy sequential --terminal_val 5 " # Hardcoded 
-    "-tb 1000 ",
+    "--sample_strategy {sample_strategy} --terminal_val {terminal_val} "
+    "-tb {batch_size} ",
 }
 
 

@@ -15,19 +15,42 @@ terminal_values = ["learn", 0, 2, 5, 10, 50]
 batch_sizes = [1000, 2000, 3000, 4000]
 
 DEFAULT_ENV = environments[0]
-DEFAULT_STRAT = strategies[0]
-DEFAULT_TERM = terminal_values[2]
-DEFAULT_BATCH_SIZE = batch_sizes[3]
 
-def dict_product(dicts):
+DEFAULTS = {
+    "HalfCheetah-v2": {
+        "terminal_val": 2,
+        "sample_strategy": "ordered_random",
+        "batch_size": 4000,
+    },
+    "CartPole-v0": {
+        "terminal_val": 5,
+        "sample_strategy": "sequential",
+        "batch_size": 1000,
+    },
+    "InvertedPendulum-v2": {
+        "terminal_val": 5,
+        "sample_strategy": "sequential",
+        "batch_size": 1000,
+    },
+}
+
+
+def dict_product(dicts, *, master_key="env_name") -> List[Dict]:
     """
+    Cross product of two dictionaries. Fills in default based on master key.
     >>> list(dict_product(dict(number=[1,2], character='ab')))
     [{'character': 'a', 'number': 1},
      {'character': 'a', 'number': 2},
      {'character': 'b', 'number': 1},
      {'character': 'b', 'number': 2}]
     """
-    return (dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
+    ret = list(dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
+    for dct in ret:
+        for k, v in dct.items():
+            if v is None:
+                dct[k] = DEFAULTS[dct[master_key]][k]
+    return ret
+
 
 def get_exp_name(exp_flags: Dict) -> str:
     return "_".join([f"{k}={v}" for k, v in exp_flags.items()])
@@ -38,9 +61,9 @@ def _get_env_sweep_flags() -> List[Dict]:
         dict(
             seed=seeds,
             env_name=environments,
-            sample_strategy=[DEFAULT_STRAT],
-            terminal_val=[DEFAULT_TERM],
-            batch_size=[DEFAULT_BATCH_SIZE],
+            sample_strategy=[None],
+            terminal_val=[None],
+            batch_size=[None],
         )
     )
 
@@ -50,8 +73,8 @@ def _get_batch_size_sweep() -> List[Dict]:
         dict(
             seed=seeds,
             env_name=[DEFAULT_ENV],
-            sample_strategy=[DEFAULT_STRAT],
-            terminal_val=[DEFAULT_TERM],
+            sample_strategy=[None],
+            terminal_val=[None],
             batch_size=batch_sizes,
         )
     )
@@ -62,9 +85,9 @@ def _get_terminal_val_sweep_flags() -> List[Dict]:
         dict(
             seed=seeds,
             env_name=[DEFAULT_ENV],
-            sample_strategy=[DEFAULT_STRAT],
+            sample_strategy=[None],
             terminal_val=terminal_values,
-            batch_size=[DEFAULT_BATCH_SIZE],
+            batch_size=[None],
         )
     )
 
@@ -75,8 +98,8 @@ def _get_sample_sweep_flags() -> List[Dict]:
             seed=seeds,
             env_name=[DEFAULT_ENV],
             sample_strategy=strategies,
-            terminal_val=[DEFAULT_TERM],
-            batch_size=[DEFAULT_BATCH_SIZE],
+            terminal_val=[None],
+            batch_size=[None],
         )
     )
 
