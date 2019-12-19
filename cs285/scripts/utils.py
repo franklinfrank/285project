@@ -4,7 +4,7 @@ from typing import List, Dict
 
 seeds = [285, 2020, 2, 423, 389, 147]
 #seeds = [285, 2020, 2]
-environments = ["InvertedPendulum-v2"]
+environments = ["CartPole-v0"]
 #environments = ["CartPole-v0", "InvertedPendulum-v2"]
 #environments = ["HalfCheetah-v2", "CartPole-v0", "InvertedPendulum-v2"]
 strategies = [
