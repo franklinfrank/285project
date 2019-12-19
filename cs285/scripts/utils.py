@@ -4,6 +4,7 @@ from typing import List, Dict
 
 #seeds = [285, 2020, 2, 423, 389, 147]
 seeds = [285, 2020, 2]
+#environments = ["CartPole-v0", "InvertedPendulum-v2"]
 environments = ["HalfCheetah-v2", "CartPole-v0", "InvertedPendulum-v2"]
 strategies = [
     "ordered_random",
@@ -24,7 +25,7 @@ DEFAULTS = {
         "batch_size": 4000,
     },
     "CartPole-v0": {
-        "terminal_val": 5,
+        "terminal_val": 2,
         "sample_strategy": "sequential",
         "batch_size": 1000,
     },
